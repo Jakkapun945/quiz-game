@@ -67,3 +67,12 @@ CREATE TABLE IF NOT EXISTS quiz_templates (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- 7. Disable Row Level Security (RLS) เพื่อให้เซิร์ฟเวอร์และ Anon Key สามารถ Insert/Select ข้อมูลเกมได้
+ALTER TABLE quizzes DISABLE ROW LEVEL SECURITY;
+ALTER TABLE questions DISABLE ROW LEVEL SECURITY;
+ALTER TABLE game_sessions DISABLE ROW LEVEL SECURITY;
+ALTER TABLE players DISABLE ROW LEVEL SECURITY;
+ALTER TABLE responses DISABLE ROW LEVEL SECURITY;
+ALTER TABLE quiz_templates DISABLE ROW LEVEL SECURITY;
+
+
