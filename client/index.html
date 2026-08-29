@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz Game — ระบบเก็บข้อมูลตอบคำถาม</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header class="app-header">
+            <h1 class="app-logo">⚡ Quiz Master</h1>
+            <p class="app-subtitle">ระบบตอบคำถาม Real-time — เก็บข้อมูล + ยินดีกับ 3 คนแรก</p>
+        </header>
+
+        <div id="alertBox" class="alert"></div>
+
+        <div class="tabs">
+            <button id="tabJoinBtn" class="tab-btn active" onclick="switchTab('join')">📱 เข้าร่วมเล่น</button>
+            <button id="tabCreateBtn" class="tab-btn" onclick="switchTab('create')">🖥️ สร้างห้อง (Host)</button>
+        </div>
+
+        <!-- 1. Join Game View -->
+        <div id="joinView">
+            <form id="joinForm" onsubmit="handleJoinGame(event)">
+                <div class="form-group">
+                    <label for="gamePin">Game PIN (เลข 6 หลัก)</label>
+                    <input type="text" id="gamePin" class="form-input pin-input" maxlength="6" placeholder="000000" required autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label for="nickname">ชื่อเล่นของคุณ (2-20 ตัวอักษร)</label>
+                    <input type="text" id="nickname" class="form-input" placeholder="ใส่ชื่อเล่น..." maxlength="20" required autocomplete="off">
+                </div>
+                <button type="submit" class="btn-primary">🚀 เข้าร่วมเกม</button>
+            </form>
+        </div>
+
+        <!-- 2. Create Poll View -->
+        <div id="createView" style="display: none;">
+            <form id="createQuizForm" onsubmit="handleCreateQuiz(event)">
+                <div class="form-group">
+                    <label for="quizTitle">ชื่อหัวข้อ</label>
+                    <input type="text" id="quizTitle" class="form-input" placeholder="เช่น คุณชอบสีอะไรมากที่สุด?" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="quizDesc">รายละเอียด (ถ้ามี)</label>
+                    <input type="text" id="quizDesc" class="form-input" placeholder="คำอธิบายเพิ่มเติม...">
+                </div>
+
+                <div class="form-group">
+                    <label for="hostPassword">🔐 Host Password</label>
+                    <input type="password" id="hostPassword" class="form-input" placeholder="อย่างน้อย 4 ตัวอักษร..." required minlength="4">
+                </div>
+
+                <div class="form-group">
+                    <label for="timeLimit">เวลาตอบ (วินาที)</label>
+                    <input type="number" id="timeLimit" class="form-input" value="20" min="5" max="120" required>
+                </div>
+
+                <hr style="border-color: rgba(255,255,255,0.1); margin: 24px 0;">
+                
+                <h3 style="margin-bottom: 16px;">📋 คำถามและตัวเลือก</h3>
+
+                <div class="question-card">
+                    <div class="form-group">
+                        <label>คำถาม</label>
+                        <input type="text" id="questionText" class="form-input" placeholder="เช่น คุณชอบสีอะไรมากที่สุด?" required>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px;">
+                        <input type="text" id="optA" class="form-input" placeholder="🔴 ตัวเลือก A" required style="border-left: 4px solid var(--color-red);">
+                        <input type="text" id="optB" class="form-input" placeholder="🔵 ตัวเลือก B" required style="border-left: 4px solid var(--color-blue);">
+                        <input type="text" id="optC" class="form-input" placeholder="🟡 ตัวเลือก C" required style="border-left: 4px solid var(--color-yellow);">
+                    </div>
+                    <p style="color: var(--text-muted); font-size: 0.9rem;">💡 ไม่มีคำตอบถูก/ผิด — ระบบเก็บข้อมูลที่ทุกคนเลือก + ยินดีกับ 3 คนที่ตอบเร็วที่สุด</p>
+                </div>
+
+                <button type="submit" class="btn-primary btn-success" style="margin-top: 16px;">🎮 สร้างห้องเกมและเป็น Host</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script>
+        function switchTab(tab) {
+            document.getElementById('tabJoinBtn').classList.toggle('active', tab === 'join');
+            document.getElementById('tabCreateBtn').classList.toggle('active', tab === 'create');
+            document.getElementById('joinView').style.display = tab === 'join' ? 'block' : 'none';
+            document.getElementById('createView').style.display = tab === 'create' ? 'block' : 'none';
+        }
+
+        function showAlert(msg, type = 'danger') {
+            const alertBox = document.getElementById('alertBox');
+            alertBox.className = `alert alert-${type}`;
+            alertBox.innerText = msg;
+            alertBox.style.display = 'block';
+            setTimeout(() => { alertBox.style.display = 'none'; }, 4000);
+        }
+
+        function handleJoinGame(e) {
+            e.preventDefault();
+            const pin = document.getElementById('gamePin').value.trim();
+            const nickname = document.getElementById('nickname').value.trim();
+
+            if (!/^\d{6}$/.test(pin)) return showAlert('Game PIN ต้องเป็นตัวเลข 6 หลัก');
+            if (nickname.length < 2 || nickname.length > 20) return showAlert('ชื่อเล่นต้องมี 2-20 ตัวอักษร');
+
+            sessionStorage.setItem('join_pin', pin);
+            sessionStorage.setItem('join_nickname', nickname);
+            window.location.href = `play.html?pin=${pin}`;
+        }
+
+        function handleCreateQuiz(e) {
+            e.preventDefault();
+
+            const quizData = {
+                title: document.getElementById('quizTitle').value.trim(),
+                description: document.getElementById('quizDesc').value.trim(),
+                time_limit_seconds: parseInt(document.getElementById('timeLimit').value),
+                question: {
+                    question_text: document.getElementById('questionText').value.trim(),
+                    option_a: document.getElementById('optA').value.trim(),
+                    option_b: document.getElementById('optB').value.trim(),
+                    option_c: document.getElementById('optC').value.trim()
+                }
+            };
+
+            if (!quizData.question.option_a || !quizData.question.option_b || !quizData.question.option_c) {
+                return showAlert('กรุณากรอกตัวเลือกให้ครบทั้ง 3 ช่อง');
+            }
+
+            sessionStorage.setItem('pending_quiz', JSON.stringify(quizData));
+            sessionStorage.setItem('host_password', document.getElementById('hostPassword').value.trim());
+            window.location.href = 'host.html';
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ผู้เล่น — Quiz Game</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+</head>
+<body>
+    <div class="container" style="max-width: 600px;">
+        <div id="alertBox" class="alert"></div>
+
+        <!-- 1. Lobby Waiting -->
+        <div id="playerLobby">
+            <header class="app-header">
+                <h2 id="quizName">กำลังเข้าสู่ห้องเกม...</h2>
+                <div style="margin-top: 16px; font-size: 1.4rem; font-weight: 800; color: #05ffa1;">
+                    ชื่อผู้เล่น: <span id="playerNicknameDisplay">-</span>
+                </div>
+            </header>
+            <div class="pin-display" style="border-style: solid;">
+                <p class="app-subtitle">🎉 คุณอยู่ในห้องเรียบร้อยแล้ว!</p>
+                <h3 style="margin-top: 10px; color: #01cdfe;">รอ Host เริ่มเกม...</h3>
+            </div>
+        </div>
+
+        <!-- 2. Question: 3 Buttons -->
+        <div id="playerQuestion" style="display: none;">
+            <div class="question-header">
+                <span id="playerQuestionLabel" style="font-weight: 800; font-size: 1.1rem;">เลือกคำตอบของคุณ</span>
+                <div id="playerTimer" class="timer-badge">20</div>
+            </div>
+
+            <div id="questionPromptDisplay" class="question-box" style="font-size: 1.3rem;">
+                คำถาม...
+            </div>
+
+            <div id="answersGrid" class="answers-grid" style="grid-template-columns: 1fr;">
+                <button class="answer-btn btn-red" onclick="sendAnswer('a')">
+                    <span class="shape-icon">▲</span> <span id="textA">A</span>
+                </button>
+                <button class="answer-btn btn-blue" onclick="sendAnswer('b')">
+                    <span class="shape-icon">◆</span> <span id="textB">B</span>
+                </button>
+                <button class="answer-btn btn-yellow" onclick="sendAnswer('c')">
+                    <span class="shape-icon">●</span> <span id="textC">C</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 3. Waiting After Answer -->
+        <div id="playerAnswerWait" style="display: none; text-align: center; padding: 40px 20px;">
+            <h2 style="color: #01cdfe; margin-bottom: 12px;">✅ ส่งคำตอบแล้ว!</h2>
+            <p class="app-subtitle">กำลังรอผู้เล่นคนอื่น...</p>
+            <div style="margin-top: 20px; font-size: 1.2rem; color: var(--text-muted);">
+                คุณตอบเป็นคนที่ <strong id="myRankWait" style="color: #05ffa1; font-size: 2rem;">#-</strong>
+            </div>
+        </div>
+
+        <!-- 4. Results Screen -->
+        <div id="playerResultScreen" style="display: none; text-align: center; padding: 30px 20px;">
+            <!-- Top 3 Congratulations (visible to everyone) -->
+            <div id="congratsSection">
+                <h1 style="font-size: 2rem; margin-bottom: 8px;">🎉 ขอแสดงความยินดี! 🎉</h1>
+                <p class="app-subtitle" style="margin-bottom: 20px;">3 คนแรกที่ตอบเร็วที่สุด</p>
+                <div id="playerTop3" style="text-align: left; max-width: 400px; margin: 0 auto;">
+                    <!-- Rendered by JS -->
+                </div>
+            </div>
+
+            <!-- Personal banner if player is in top 3 -->
+            <div id="personalBanner" class="alert alert-success" style="display: none; font-size: 1.5rem; font-weight: 900; margin: 24px 0;">
+                🏆 ยินดีด้วย! คุณเป็น 1 ใน 3 คนที่เร็วที่สุด!
+            </div>
+
+            <!-- Stats -->
+            <h3 style="margin: 24px 0 12px 0;">📊 สถิติการเลือก</h3>
+            <div id="playerStatsContainer" style="text-align: left;">
+                <!-- Bars rendered by JS -->
+            </div>
+
+            <button class="btn-primary" onclick="window.location.href='index.html'" style="margin-top: 24px;">
+                🏠 กลับหน้าหลัก
+            </button>
+        </div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script src="js/player.js"></script>
+</body>
+</html>

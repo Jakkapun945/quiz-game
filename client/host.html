@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Host Control Panel — Quiz Game</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+</head>
+<body>
+    <div class="container" style="max-width: 1000px;">
+        <div id="alertBox" class="alert"></div>
+
+        <!-- 1. Lobby Screen -->
+        <div id="lobbyScreen">
+            <header class="app-header">
+                <h2 id="quizTitleDisplay">กำลังโหลดห้องเกม...</h2>
+                <p class="app-subtitle">บอกให้ทุกคนใส่ Game PIN นี้เพื่อเข้าร่วม</p>
+            </header>
+
+            <div class="pin-display">
+                <div class="pin-label">GAME PIN</div>
+                <div id="pinDisplay" class="pin-number">------</div>
+                <div id="playerCount" style="font-size: 1.2rem; font-weight: 700; color: #01cdfe;">
+                    ผู้เล่นเข้าร่วมแล้ว: 0 คน
+                </div>
+            </div>
+
+            <h3 style="margin-bottom: 12px;">รายชื่อผู้เล่น</h3>
+            <div id="playersGrid" class="players-grid"></div>
+
+            <button id="startBtn" class="btn-primary btn-success" onclick="startGame()" style="margin-top: 30px; font-size: 1.4rem;">
+                ▶️ เริ่มเกม!
+            </button>
+        </div>
+
+        <!-- 2. Host Question View -->
+        <div id="questionScreen" style="display: none;">
+            <div class="question-header">
+                <span id="answersReceivedBadge" style="background: var(--primary-purple); padding: 8px 16px; border-radius: 20px; font-weight: 800;">
+                    ตอบแล้ว 0 / 0 คน
+                </span>
+                <div id="hostTimer" class="timer-badge">20</div>
+            </div>
+
+            <div id="questionTextDisplay" class="question-box">คำถาม...</div>
+
+            <div class="answers-grid" style="grid-template-columns: 1fr;">
+                <div class="answer-btn btn-red"><span class="shape-icon">▲</span> <span id="optA">A</span></div>
+                <div class="answer-btn btn-blue"><span class="shape-icon">◆</span> <span id="optB">B</span></div>
+                <div class="answer-btn btn-yellow"><span class="shape-icon">●</span> <span id="optC">C</span></div>
+            </div>
+        </div>
+
+        <!-- 3. Results Screen: Fastest 3 + Stats -->
+        <div id="resultsScreen" style="display: none;">
+            <!-- Congratulations Banner for Top 3 -->
+            <div id="congratsBanner" style="text-align: center; margin-bottom: 30px;">
+                <h1 style="font-size: 2.5rem; margin-bottom: 8px;">🎉 ขอแสดงความยินดี! 🎉</h1>
+                <p class="app-subtitle">3 คนแรกที่ตอบเร็วที่สุด</p>
+            </div>
+
+            <div id="podium" class="podium-container"></div>
+
+            <!-- Statistics Bar Chart -->
+            <h3 style="text-align: center; margin: 30px 0 16px 0;">📊 สถิติการเลือกแต่ละตัวเลือก</h3>
+            <div id="statsContainer" style="max-width: 600px; margin: 0 auto;">
+                <!-- Bars rendered by JS -->
+            </div>
+
+            <div style="text-align: center; margin-top: 12px; color: var(--text-muted); font-weight: 600;">
+                ตอบทั้งหมด: <span id="totalResponsesText">0</span> / <span id="totalPlayersText">0</span> คน
+            </div>
+
+            <!-- Full response list -->
+            <h3 style="margin: 30px 0 16px 0;">⏱️ ลำดับการตอบ (เรียงตามเวลา)</h3>
+            <ul id="responseList" class="leaderboard-list"></ul>
+
+            <button class="btn-primary" onclick="window.location.href='index.html'" style="margin-top: 24px;">
+                🏠 กลับหน้าหลัก
+            </button>
+        </div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script src="js/host.js"></script>
+</body>
+</html>
