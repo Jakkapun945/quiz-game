@@ -20,12 +20,16 @@ const app = express();
 const server = http.createServer(app);
 
 const clientUrl = process.env.CLIENT_URL || '*';
-app.use(cors({ origin: clientUrl }));
+app.use(cors({
+    origin: '*',
+    methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json());
 
 const io = new Server(server, {
     cors: {
-        origin: clientUrl,
+        origin: '*',
         methods: ['GET', 'POST']
     }
 });
