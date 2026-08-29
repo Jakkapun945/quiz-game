@@ -76,13 +76,18 @@
             <h3 style="margin: 30px 0 16px 0;">⏱️ ลำดับการตอบ (เรียงตามเวลา)</h3>
             <ul id="responseList" class="leaderboard-list"></ul>
 
-            <button class="btn-primary" onclick="window.location.href='index.html'" style="margin-top: 24px;">
+            <button class="btn-primary btn-success" id="saveTemplateBtn" onclick="saveAsTemplate()" style="margin-top: 24px;">
+                💾 บันทึก Quiz นี้เป็น Template ไว้ใช้ซ้ำ
+            </button>
+
+            <button class="btn-primary" onclick="window.location.href='index.html'" style="margin-top: 12px; background: rgba(255,255,255,0.15);">
                 🏠 กลับหน้าหลัก
             </button>
         </div>
     </div>
 
     <script src="js/config.js"></script>
+    <script src="js/sakura.js"></script>
     <script src="js/host.js"></script>
 </body>
 </html>

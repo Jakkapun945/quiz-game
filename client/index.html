@@ -38,6 +38,17 @@
 
         <!-- 2. Create Poll View -->
         <div id="createView" style="display: none;">
+            <!-- Template Selection Box -->
+            <div class="question-card" style="background: rgba(70, 23, 143, 0.35); border: 1px solid rgba(255, 182, 193, 0.35); margin-bottom: 24px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h3 style="font-size: 1.1rem; color: #ffb7c5;">📂 เลือก Quiz Template ที่บันทึกไว้</h3>
+                    <button type="button" onclick="loadTemplates()" class="btn-remove-q" style="background: rgba(1, 205, 254, 0.2); border-color: #01cdfe; color: #01cdfe;">🔄 โหลดใหม่</button>
+                </div>
+                <div id="templateList" style="display: flex; flex-direction: column; gap: 10px; max-height: 200px; overflow-y: auto;">
+                    <p style="color: var(--text-muted); font-size: 0.9rem;">กำลังโหลด Template...</p>
+                </div>
+            </div>
+
             <form id="createQuizForm" onsubmit="handleCreateQuiz(event)">
                 <div class="form-group">
                     <label for="quizTitle">ชื่อหัวข้อ</label>
@@ -82,12 +93,100 @@
     </div>
 
     <script src="js/config.js"></script>
+    <script src="js/sakura.js"></script>
     <script>
+        let availableTemplates = [];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadTemplates();
+        });
+
         function switchTab(tab) {
             document.getElementById('tabJoinBtn').classList.toggle('active', tab === 'join');
             document.getElementById('tabCreateBtn').classList.toggle('active', tab === 'create');
             document.getElementById('joinView').style.display = tab === 'join' ? 'block' : 'none';
             document.getElementById('createView').style.display = tab === 'create' ? 'block' : 'none';
+            if (tab === 'create') loadTemplates();
+        }
+
+        async function loadTemplates() {
+            const listEl = document.getElementById('templateList');
+            if (!listEl) return;
+            listEl.innerHTML = '<p style="color: var(--text-muted); font-size: 0.9rem;">กำลังโหลด Template...</p>';
+            
+            try {
+                const res = await fetch(`${CONFIG.BACKEND_URL}/api/templates`);
+                const data = await res.json();
+                let templates = data.templates || [];
+
+                const localTemplates = JSON.parse(localStorage.getItem('quiz_templates') || '[]');
+                
+                const allTemplates = [...templates];
+                localTemplates.forEach(lt => {
+                    if (!allTemplates.some(t => t.id === lt.id || t.title === lt.title)) {
+                        allTemplates.push(lt);
+                    }
+                });
+
+                availableTemplates = allTemplates;
+
+                if (allTemplates.length === 0) {
+                    listEl.innerHTML = '<p style="color: var(--text-muted); font-size: 0.9rem;">ยังไม่มี Template ที่บันทึกไว้ (คุณสามารถกดบันทึกเป็น Template ในหน้าสรุปผลหลังเล่นจบได้)</p>';
+                    return;
+                }
+
+                listEl.innerHTML = '';
+                allTemplates.forEach((t, idx) => {
+                    const item = document.createElement('div');
+                    item.style.cssText = 'background: rgba(0,0,0,0.3); padding: 12px 16px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; border: 1px solid rgba(255,255,255,0.1);';
+                    item.innerHTML = `
+                        <div>
+                            <strong style="color: #05ffa1; font-size: 1.05rem;">${t.title}</strong>
+                            <div style="font-size: 0.85rem; color: var(--text-muted);">${t.question_text || ''} (${t.time_limit_seconds || 20} วินาที)</div>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button type="button" onclick="applyTemplate(${idx})" style="background: #1368ce; color: white; border: none; padding: 6px 14px; border-radius: 8px; font-weight: 700; cursor: pointer;">✨ ใช้</button>
+                            <button type="button" onclick="deleteTemplate('${t.id}', ${idx})" style="background: rgba(226,27,60,0.3); color: #ff99a8; border: 1px solid #e21b3c; padding: 6px 10px; border-radius: 8px; cursor: pointer;">🗑️</button>
+                        </div>
+                    `;
+                    listEl.appendChild(item);
+                });
+            } catch (err) {
+                console.error('Failed to load templates:', err);
+                listEl.innerHTML = '<p style="color: #ff99a8; font-size: 0.9rem;">ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์เพื่อดึง Template ได้</p>';
+            }
+        }
+
+        function applyTemplate(index) {
+            const t = availableTemplates[index];
+            if (!t) return;
+            
+            document.getElementById('quizTitle').value = t.title || '';
+            document.getElementById('quizDesc').value = t.description || '';
+            document.getElementById('timeLimit').value = t.time_limit_seconds || 20;
+            document.getElementById('questionText').value = t.question_text || '';
+            document.getElementById('option_a' in t ? 'optA' : 'optA').value = t.option_a || '';
+            document.getElementById('optB').value = t.option_b || '';
+            document.getElementById('optC').value = t.option_c || '';
+
+            showAlert('✨ ดึงข้อมูลจาก Template เรียบร้อยแล้ว!', 'success');
+        }
+
+        async function deleteTemplate(id, index) {
+            if (!confirm('คุณต้องการลบ Template นี้หรือไม่?')) return;
+
+            try {
+                await fetch(`${CONFIG.BACKEND_URL}/api/templates/${id}`, { method: 'DELETE' });
+            } catch (err) {
+                console.warn('API delete failed, removing locally');
+            }
+
+            let localTemplates = JSON.parse(localStorage.getItem('quiz_templates') || '[]');
+            localTemplates = localTemplates.filter(t => t.id !== id);
+            localStorage.setItem('quiz_templates', JSON.stringify(localTemplates));
+
+            loadTemplates();
+            showAlert('ลบ Template เรียบร้อยแล้ว', 'warning');
         }
 
         function showAlert(msg, type = 'danger') {

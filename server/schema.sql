@@ -53,3 +53,17 @@ CREATE TABLE IF NOT EXISTS responses (
     response_time_ms INT DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- 6. Quiz Templates Table (สำหรับบันทึก Template Quiz ที่สร้างเสร็จแล้วเพื่อนำมาใช้ซ้ำ)
+CREATE TABLE IF NOT EXISTS quiz_templates (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    title TEXT NOT NULL,
+    description TEXT,
+    time_limit_seconds INT DEFAULT 20,
+    question_text TEXT NOT NULL,
+    option_a TEXT NOT NULL,
+    option_b TEXT NOT NULL,
+    option_c TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+

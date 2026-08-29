@@ -38,6 +38,99 @@ app.get('/health', (req, res) => {
     res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// In-memory fallback templates if Supabase is not connected
+const memoryTemplates = [
+    {
+        id: 'tmpl-demo-1',
+        title: 'แบบสอบถามสีที่ชื่นชอบ',
+        description: 'โพลสำรวจความคิดเห็นเรื่องสียอดนิยม',
+        time_limit_seconds: 20,
+        question_text: 'คุณชอบสีอะไรมากที่สุด?',
+        option_a: 'สีแดง 🔴',
+        option_b: 'สีฟ้า 🔵',
+        option_c: 'สีเหลือง 🟡',
+        created_at: new Date().toISOString()
+    }
+];
+
+// ===== API: Get Quiz Templates =====
+app.get('/api/templates', async (req, res) => {
+    try {
+        if (supabase) {
+            const { data, error } = await supabase
+                .from('quiz_templates')
+                .select('*')
+                .order('created_at', { ascending: false });
+            if (error) throw error;
+            return res.json({ success: true, templates: data });
+        }
+        return res.json({ success: true, templates: memoryTemplates, mode: 'memory' });
+    } catch (err) {
+        console.error('Error fetching templates:', err.message);
+        return res.json({ success: true, templates: memoryTemplates, mode: 'fallback' });
+    }
+});
+
+// ===== API: Save New Quiz Template =====
+app.post('/api/templates', async (req, res) => {
+    try {
+        const { title, description, time_limit_seconds, question_text, option_a, option_b, option_c } = req.body;
+
+        if (!title || !question_text || !option_a || !option_b || !option_c) {
+            return res.status(400).json({ success: false, message: 'กรอกข้อมูลไม่ครบถ้วน' });
+        }
+
+        const templateObj = {
+            title: title.trim(),
+            description: (description || '').trim(),
+            time_limit_seconds: parseInt(time_limit_seconds) || 20,
+            question_text: question_text.trim(),
+            option_a: option_a.trim(),
+            option_b: option_b.trim(),
+            option_c: option_c.trim()
+        };
+
+        if (supabase) {
+            const { data, error } = await supabase
+                .from('quiz_templates')
+                .insert([templateObj])
+                .select()
+                .single();
+            if (error) throw error;
+            return res.json({ success: true, template: data, message: 'บันทึก Template ลง Supabase สำเร็จ!' });
+        } else {
+            const fallbackTmpl = {
+                id: 'tmpl-' + Date.now(),
+                ...templateObj,
+                created_at: new Date().toISOString()
+            };
+            memoryTemplates.unshift(fallbackTmpl);
+            return res.json({ success: true, template: fallbackTmpl, message: 'บันทึก Template สำเร็จ (Demo Mode)' });
+        }
+    } catch (err) {
+        console.error('Error saving template:', err.message);
+        return res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการบันทึก Template' });
+    }
+});
+
+// ===== API: Delete Quiz Template =====
+app.delete('/api/templates/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (supabase) {
+            const { error } = await supabase.from('quiz_templates').delete().eq('id', id);
+            if (error) throw error;
+        } else {
+            const index = memoryTemplates.findIndex(t => t.id === id);
+            if (index !== -1) memoryTemplates.splice(index, 1);
+        }
+        return res.json({ success: true, message: 'ลบ Template เรียบร้อยแล้ว' });
+    } catch (err) {
+        console.error('Error deleting template:', err.message);
+        return res.status(500).json({ success: false, message: 'ไม่สามารถลบ Template ได้' });
+    }
+});
+
 // Helper: Generate unique 6-digit Game PIN
 function generateGamePin() {
     let pin;
@@ -45,6 +138,81 @@ function generateGamePin() {
         pin = Math.floor(100000 + Math.random() * 900000).toString();
     } while (activeSessions.has(pin));
     return pin;
+}
+
+// Helper: Save session data to Supabase Database
+async function persistSessionToSupabase(session) {
+    if (!supabase) return;
+    try {
+        // 1. Insert Quiz
+        const { data: quizRow, error: qErr } = await supabase.from('quizzes').insert([{
+            title: session.quiz.title,
+            description: session.quiz.description || '',
+            host_password: session.hostPasswordHash,
+            time_limit_seconds: session.quiz.time_limit_seconds || 20
+        }]).select().single();
+        if (qErr) throw qErr;
+
+        // 2. Insert Question
+        const q = session.quiz.question;
+        const { data: questionRow, error: qnErr } = await supabase.from('questions').insert([{
+            quiz_id: quizRow.id,
+            question_text: q.question_text,
+            option_a: q.option_a,
+            option_b: q.option_b,
+            option_c: q.option_c
+        }]).select().single();
+        if (qnErr) throw qnErr;
+
+        // 3. Insert Game Session
+        const { data: sessionRow, error: sErr } = await supabase.from('game_sessions').insert([{
+            quiz_id: quizRow.id,
+            game_pin: session.pin,
+            status: session.status
+        }]).select().single();
+        if (sErr) throw sErr;
+
+        // Save generated DB IDs to session
+        session.dbQuizId = quizRow.id;
+        session.dbQuestionId = questionRow.id;
+        session.dbSessionId = sessionRow.id;
+        console.log(`💾 Persisted Session & Quiz to Supabase. Session ID: ${sessionRow.id}`);
+    } catch (err) {
+        console.error('⚠️ Supabase Persist Session Error:', err.message);
+    }
+}
+
+async function persistResultsToSupabase(session) {
+    if (!supabase || !session.dbSessionId) return;
+    try {
+        // 1. Update Game Session Status
+        await supabase.from('game_sessions').update({ status: 'FINISHED' }).eq('id', session.dbSessionId);
+
+        // 2. Insert Players & Responses
+        for (const player of session.players.values()) {
+            const { data: playerRow, error: pErr } = await supabase.from('players').insert([{
+                session_id: session.dbSessionId,
+                nickname: player.nickname,
+                socket_id: player.socketId,
+                is_connected: player.isConnected
+            }]).select().single();
+
+            if (!pErr && playerRow) {
+                const resp = session.responses.get(player.id);
+                if (resp) {
+                    await supabase.from('responses').insert([{
+                        player_id: playerRow.id,
+                        question_id: session.dbQuestionId,
+                        selected_option: resp.selectedOption,
+                        response_time_ms: resp.responseTimeMs
+                    }]);
+                }
+            }
+        }
+        console.log(`💾 Persisted Players & Responses to Supabase for Session PIN: ${session.pin}`);
+    } catch (err) {
+        console.error('⚠️ Supabase Persist Results Error:', err.message);
+    }
 }
 
 // Socket.IO Game Logic
@@ -79,6 +247,9 @@ io.on('connection', (socket) => {
 
         activeSessions.set(pin, session);
         socket.join(pin);
+
+        // Async persist to Supabase if available
+        persistSessionToSupabase(session);
 
         socket.emit('session_created', {
             pin,
@@ -373,6 +544,9 @@ function showResults(session) {
     });
 
     console.log(`📊 Results shown for PIN ${session.pin}. Responses: ${totalResponses}/${session.players.size}`);
+    
+    // Async persist players & responses to Supabase
+    persistResultsToSupabase(session);
 }
 
 // Initialize KeepAlive

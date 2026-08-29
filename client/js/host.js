@@ -149,3 +149,62 @@ socket.on('show_results', (data) => {
         list.appendChild(li);
     });
 });
+
+async function saveAsTemplate() {
+    const pendingQuizRaw = sessionStorage.getItem('pending_quiz');
+    if (!pendingQuizRaw) {
+        return showAlert('ไม่พบข้อมูล Quiz ที่จะบันทึก');
+    }
+
+    const currentQuiz = JSON.parse(pendingQuizRaw);
+    const q = currentQuiz.question;
+
+    const payload = {
+        title: currentQuiz.title,
+        description: currentQuiz.description || '',
+        time_limit_seconds: currentQuiz.time_limit_seconds || 20,
+        question_text: q.question_text,
+        option_a: q.option_a,
+        option_b: q.option_b,
+        option_c: q.option_c
+    };
+
+    const saveBtn = document.getElementById('saveTemplateBtn');
+    if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.innerText = '⏳ กำลังบันทึก...';
+    }
+
+    try {
+        const res = await fetch(`${CONFIG.BACKEND_URL}/api/templates`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        
+        // Also save to localStorage as local fallback
+        const localTemplates = JSON.parse(localStorage.getItem('quiz_templates') || '[]');
+        const newLocal = { id: 'tmpl-' + Date.now(), ...payload, created_at: new Date().toISOString() };
+        localTemplates.unshift(newLocal);
+        localStorage.setItem('quiz_templates', JSON.stringify(localTemplates));
+
+        if (saveBtn) {
+            saveBtn.innerText = '✅ บันทึกเป็น Template เรียบร้อย!';
+        }
+        showAlert(data.message || 'บันทึก Template สำเร็จ!', 'success');
+    } catch (err) {
+        console.error('Error saving template:', err);
+        // Save to localStorage as fallback
+        const localTemplates = JSON.parse(localStorage.getItem('quiz_templates') || '[]');
+        const newLocal = { id: 'tmpl-' + Date.now(), ...payload, created_at: new Date().toISOString() };
+        localTemplates.unshift(newLocal);
+        localStorage.setItem('quiz_templates', JSON.stringify(localTemplates));
+
+        if (saveBtn) {
+            saveBtn.innerText = '✅ บันทึกเรียบร้อย (เครื่องส่วนตัว)';
+        }
+        showAlert('บันทึก Template ไว้ในเบราว์เซอร์เรียบร้อยแล้ว!', 'success');
+    }
+}
+
