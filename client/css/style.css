@@ -492,6 +492,97 @@ body {
     cursor: pointer;
 }
 
+/* ========== Podium Name Reveal ========== */
+
+/* ชื่อที่ยังไม่เฉลย */
+.podium-name-hidden {
+    filter: blur(8px);
+    color: rgba(255, 255, 255, 0.3);
+    user-select: none;
+    transition: all 0.6s ease;
+}
+
+.podium-score-hidden {
+    opacity: 0;
+    transition: opacity 0.6s ease;
+}
+
+/* Pulse glow บอก Host ว่ากดได้ */
+.podium-clickable {
+    cursor: pointer;
+    position: relative;
+    animation: podiumGlow 1.5s ease-in-out infinite alternate;
+    transition: transform 0.2s ease;
+}
+
+.podium-clickable:hover {
+    transform: scale(1.05);
+}
+
+.podium-clickable::after {
+    content: '👆 กดเพื่อเฉลย';
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.7);
+    white-space: nowrap;
+    animation: tooltipPulse 2s ease-in-out infinite;
+}
+
+@keyframes podiumGlow {
+    from { box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4); }
+    to { box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 25px rgba(255, 255, 255, 0.25); }
+}
+
+@keyframes tooltipPulse {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+}
+
+/* แท่งที่เฉลยแล้ว */
+.podium-revealed .podium-name,
+.podium-revealed .podium-score {
+    animation: revealName 0.8s ease-out forwards;
+}
+
+.podium-revealed::after {
+    display: none;
+}
+
+.podium-revealed {
+    cursor: default;
+    animation: revealBounce 0.6s ease-out;
+}
+
+@keyframes revealName {
+    from { filter: blur(8px); opacity: 0; transform: scale(0.8); }
+    to { filter: blur(0); opacity: 1; transform: scale(1); }
+}
+
+@keyframes revealBounce {
+    0% { transform: scale(1); }
+    30% { transform: scale(1.08); }
+    60% { transform: scale(0.97); }
+    100% { transform: scale(1); }
+}
+
+/* Player Podium (คล้าย Host แต่ไม่กดได้) */
+.player-podium-container {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 12px;
+    margin: 30px 0;
+    height: 200px;
+}
+
+.player-podium-container .podium-place {
+    max-width: 100px;
+}
+
 /* Responsive adjustments */
 @media (max-width: 600px) {
     .answers-grid {
@@ -502,5 +593,8 @@ body {
     }
     .pin-number {
         font-size: 3rem;
+    }
+    .podium-clickable::after {
+        font-size: 0.6rem;
     }
 }

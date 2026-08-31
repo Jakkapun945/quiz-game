@@ -244,6 +244,7 @@ io.on('connection', (socket) => {
             players: new Map(),         // playerId -> playerObj
             responses: new Map(),       // playerId -> { selectedOption, responseTimeMs }
             responseOrder: [],          // Array of playerIds in order of response
+            revealedPositions: new Set(), // Track which podium positions have been revealed
             timer: null,
             timeRemaining: 0,
             questionStartTime: null
@@ -443,6 +444,48 @@ io.on('connection', (socket) => {
             clearInterval(session.timer);
             showResults(session);
         }
+    });
+
+    // ===== HOST: Reveal Podium Name =====
+    socket.on('reveal_podium', ({ pin, position }) => {
+        const session = activeSessions.get(pin);
+        if (!session) return;
+        if (session.hostSocketId !== socket.id) return;
+        if (session.status !== 'RESULTS') return;
+
+        // Validate position (0 = 1st, 1 = 2nd, 2 = 3rd)
+        if (typeof position !== 'number' || position < 0 || position > 2) return;
+        if (session.revealedPositions.has(position)) return; // Already revealed
+
+        session.revealedPositions.add(position);
+
+        // Get top3 data
+        const rankedPlayers = session.responseOrder.map((pid, index) => {
+            const player = session.players.get(pid);
+            const resp = session.responses.get(pid);
+            return {
+                rank: index + 1,
+                nickname: player ? player.nickname : 'Unknown',
+                responseTimeMs: resp.responseTimeMs
+            };
+        });
+        const top3 = rankedPlayers.slice(0, 3);
+        const revealed = top3[position];
+        if (!revealed) return;
+
+        // Broadcast to all players in the room
+        session.players.forEach((player) => {
+            if (player.isConnected) {
+                io.to(player.socketId).emit('podium_revealed', {
+                    position,
+                    nickname: revealed.nickname,
+                    responseTimeMs: revealed.responseTimeMs,
+                    isPlayerTop3: player.nickname === revealed.nickname
+                });
+            }
+        });
+
+        console.log(`🎭 Podium position ${position} revealed: ${revealed.nickname} (PIN: ${pin})`);
     });
 
     // ===== Disconnect =====

@@ -80,12 +80,20 @@ socket.on('answer_submitted', ({ answeredCount, totalPlayers }) => {
     document.getElementById('answersReceivedBadge').innerText = `ตอบแล้ว ${answeredCount} / ${totalPlayers} คน`;
 });
 
+// Store top3 data for reveal
+let top3Data = [];
+let revealedSet = new Set();
+
 // Show Results (Fastest 3 + Stats %)
 socket.on('show_results', (data) => {
     document.getElementById('questionScreen').style.display = 'none';
     document.getElementById('resultsScreen').style.display = 'block';
 
-    // Podium: Top 3 fastest responders
+    // Store top3 for reveal
+    top3Data = data.top3;
+    revealedSet = new Set();
+
+    // Podium: Top 3 fastest responders — names hidden
     const podium = document.getElementById('podium');
     podium.innerHTML = '';
 
@@ -98,13 +106,20 @@ socket.on('show_results', (data) => {
         const p = data.top3[i];
         if (p) {
             const div = document.createElement('div');
-            div.className = `podium-place ${placeClasses[i]}`;
-            const timeFormatted = (p.responseTimeMs / 1000).toFixed(2);
+            div.className = `podium-place ${placeClasses[i]} podium-clickable`;
+            div.id = `podium-pos-${i}`;
+            div.dataset.position = i;
             div.innerHTML = `
                 <div class="podium-crown">${medals[i]}</div>
-                <div class="podium-name">${p.nickname}</div>
-                <div class="podium-score">${timeFormatted} วินาที</div>
+                <div class="podium-name podium-name-hidden">???</div>
+                <div class="podium-score podium-score-hidden">--</div>
             `;
+
+            // Click to reveal
+            div.addEventListener('click', () => {
+                revealPodiumPosition(i);
+            });
+
             podium.appendChild(div);
         }
     });
@@ -149,6 +164,30 @@ socket.on('show_results', (data) => {
         list.appendChild(li);
     });
 });
+
+// Host clicks a podium position to reveal
+function revealPodiumPosition(position) {
+    if (revealedSet.has(position)) return;
+    if (!top3Data[position]) return;
+
+    revealedSet.add(position);
+
+    // Reveal locally on host screen immediately
+    const div = document.getElementById(`podium-pos-${position}`);
+    if (div) {
+        const p = top3Data[position];
+        const timeFormatted = (p.responseTimeMs / 1000).toFixed(2);
+        div.classList.remove('podium-clickable');
+        div.classList.add('podium-revealed');
+        div.querySelector('.podium-name').classList.remove('podium-name-hidden');
+        div.querySelector('.podium-name').innerText = p.nickname;
+        div.querySelector('.podium-score').classList.remove('podium-score-hidden');
+        div.querySelector('.podium-score').innerText = `${timeFormatted} วินาที`;
+    }
+
+    // Emit to server to broadcast to all players
+    socket.emit('reveal_podium', { pin: currentPin, position });
+}
 
 async function saveAsTemplate() {
     const pendingQuizRaw = sessionStorage.getItem('pending_quiz');

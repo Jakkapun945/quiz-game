@@ -140,27 +140,51 @@ socket.on('show_results_player', (data) => {
     document.getElementById('playerLobby').style.display = 'none';
     document.getElementById('playerResultScreen').style.display = 'block';
 
-    // Top 3 list
+    // Store data for reveal
+    window._playerResultData = data;
+
+    // Render Podium with hidden names
+    const podium = document.getElementById('playerPodium');
+    podium.innerHTML = '';
+
+    const medals = ['👑 1st', '🥈 2nd', '🥉 3rd'];
+    const placeClasses = ['place-1', 'place-2', 'place-3'];
+
+    // Podium display order: 2nd, 1st, 3rd
+    const displayOrder = [1, 0, 2];
+    displayOrder.forEach(i => {
+        if (i < data.top3.length) {
+            const div = document.createElement('div');
+            div.className = `podium-place ${placeClasses[i]}`;
+            div.id = `player-podium-pos-${i}`;
+            div.innerHTML = `
+                <div class="podium-crown">${medals[i]}</div>
+                <div class="podium-name podium-name-hidden">???</div>
+                <div class="podium-score podium-score-hidden">--</div>
+            `;
+            podium.appendChild(div);
+        }
+    });
+
+    // Top 3 list — also hidden initially
     const top3Container = document.getElementById('playerTop3');
     top3Container.innerHTML = '';
-    const medals = ['🥇', '🥈', '🥉'];
+    const listMedals = ['🥇', '🥈', '🥉'];
     data.top3.forEach((p, i) => {
-        const timeFormatted = (p.responseTimeMs / 1000).toFixed(2);
         const div = document.createElement('div');
         div.className = 'leaderboard-item';
+        div.id = `player-top3-item-${i}`;
         div.innerHTML = `
-            <span>${medals[i]} ${p.nickname}</span>
-            <span>${timeFormatted} วินาที</span>
+            <span>${listMedals[i]} <span class="top3-name" style="filter: blur(6px); color: rgba(255,255,255,0.3);">???</span></span>
+            <span class="top3-time" style="opacity: 0;">--</span>
         `;
         top3Container.appendChild(div);
     });
 
-    // Personal banner for top 3
-    if (data.isTop3) {
-        document.getElementById('personalBanner').style.display = 'block';
-    }
+    // Don't show personal banner yet — wait for reveals
+    document.getElementById('personalBanner').style.display = 'none';
 
-    // Stats Bars
+    // Stats Bars (show immediately)
     const statsContainer = document.getElementById('playerStatsContainer');
     statsContainer.innerHTML = '';
     const colors = { a: '#e21b3c', b: '#1368ce', c: '#ffa602' };
@@ -182,4 +206,43 @@ socket.on('show_results_player', (data) => {
         `;
         statsContainer.appendChild(bar);
     });
+});
+
+// Podium Revealed — Host clicked a podium position
+socket.on('podium_revealed', (data) => {
+    const { position, nickname, responseTimeMs, isPlayerTop3 } = data;
+    const timeFormatted = (responseTimeMs / 1000).toFixed(2);
+
+    // Update Podium bar
+    const podiumDiv = document.getElementById(`player-podium-pos-${position}`);
+    if (podiumDiv) {
+        podiumDiv.classList.add('podium-revealed');
+        const nameEl = podiumDiv.querySelector('.podium-name');
+        nameEl.classList.remove('podium-name-hidden');
+        nameEl.innerText = nickname;
+
+        const scoreEl = podiumDiv.querySelector('.podium-score');
+        scoreEl.classList.remove('podium-score-hidden');
+        scoreEl.innerText = `${timeFormatted} วินาที`;
+    }
+
+    // Update Top 3 list item
+    const listItem = document.getElementById(`player-top3-item-${position}`);
+    if (listItem) {
+        const nameSpan = listItem.querySelector('.top3-name');
+        nameSpan.style.filter = 'none';
+        nameSpan.style.color = '';
+        nameSpan.innerText = nickname;
+        nameSpan.style.animation = 'revealName 0.8s ease-out forwards';
+
+        const timeSpan = listItem.querySelector('.top3-time');
+        timeSpan.style.opacity = '1';
+        timeSpan.innerText = `${timeFormatted} วินาที`;
+        timeSpan.style.animation = 'revealName 0.8s ease-out forwards';
+    }
+
+    // Show personal banner if this reveal is the current player
+    if (isPlayerTop3) {
+        document.getElementById('personalBanner').style.display = 'block';
+    }
 });
