@@ -438,12 +438,21 @@ io.on('connection', (socket) => {
             totalPlayers: session.players.size
         });
 
-        // If all connected players have responded, show results early
-        const activeCount = Array.from(session.players.values()).filter(p => p.isConnected).length;
-        if (session.responses.size >= activeCount) {
-            clearInterval(session.timer);
-            showResults(session);
-        }
+        // Note: Do NOT end the question early when all players respond.
+        // Let the countdown timer run naturally down to 0 so results/answers are not shown prematurely.
+    });
+
+    // ===== HOST: Skip Timer Early =====
+    socket.on('skip_timer', async ({ pin, hostPassword }) => {
+        const session = activeSessions.get(pin);
+        if (!session || session.status !== 'QUESTION') return;
+        if (session.hostSocketId !== socket.id) return;
+
+        const match = await bcrypt.compare(hostPassword || '', session.hostPasswordHash);
+        if (!match) return;
+
+        clearInterval(session.timer);
+        showResults(session);
     });
 
     // ===== HOST: Reveal Podium Name =====

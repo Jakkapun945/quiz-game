@@ -58,6 +58,12 @@ function startGame() {
     socket.emit('start_game', { pin: currentPin, hostPassword });
 }
 
+// Skip Timer (Host manually ends question early if desired)
+function skipTimer() {
+    if (!currentPin) return;
+    socket.emit('skip_timer', { pin: currentPin, hostPassword });
+}
+
 // Host Question
 socket.on('host_question', (data) => {
     document.getElementById('lobbyScreen').style.display = 'none';

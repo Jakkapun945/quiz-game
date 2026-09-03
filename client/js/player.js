@@ -65,6 +65,13 @@ socket.on('reconnect_success', (data) => {
         hasAnswered = data.hasResponded;
         showQuestionScreen(data);
         if (hasAnswered) showWaitScreen();
+    } else if (data.status === 'RESULTS') {
+        // Show a waiting-for-reveal screen when reconnecting during results
+        document.getElementById('playerLobby').style.display = 'none';
+        document.getElementById('playerQuestion').style.display = 'none';
+        document.getElementById('playerAnswerWait').style.display = 'none';
+        document.getElementById('playerResultScreen').style.display = 'block';
+        showAlert('📊 กำลังรอ Host เฉลยผลลัพธ์...', 'success');
     }
 });
 
@@ -129,6 +136,14 @@ socket.on('answer_received', ({ rank }) => {
 });
 
 socket.on('answer_error', (msg) => showAlert(msg));
+
+// Host Disconnected — room closed
+socket.on('host_disconnected', () => {
+    localStorage.removeItem('player_id');
+    localStorage.removeItem('player_pin');
+    alert('⚠️ Host ออกจากห้องแล้ว เกมสิ้นสุดลง');
+    window.location.href = 'index.html';
+});
 
 // Results: Congratulations + Stats (received by all players)
 socket.on('show_results_player', (data) => {
