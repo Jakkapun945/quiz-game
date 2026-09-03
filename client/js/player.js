@@ -227,6 +227,10 @@ socket.on('podium_revealed', (data) => {
     const { position, nickname, responseTimeMs, isPlayerTop3 } = data;
     const timeFormatted = (responseTimeMs / 1000).toFixed(2);
 
+    // Hide "รอ Host เฉลย..." text once any position is revealed
+    const waitingText = document.getElementById('waitingRevealText');
+    if (waitingText) waitingText.style.display = 'none';
+
     // Update Podium bar
     const podiumDiv = document.getElementById(`player-podium-pos-${position}`);
     if (podiumDiv) {
