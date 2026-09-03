@@ -425,10 +425,8 @@ io.on('connection', (socket) => {
         });
         session.responseOrder.push(playerId);
 
-        // Ack to the player
-        const rank = session.responseOrder.length;
+        // Ack to the player (don't send rank — it will be revealed by Host on podium)
         socket.emit('answer_received', {
-            rank,
             responseTimeMs
         });
 

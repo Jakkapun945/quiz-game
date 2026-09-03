@@ -131,8 +131,8 @@ function showWaitScreen() {
     document.getElementById('playerAnswerWait').style.display = 'block';
 }
 
-socket.on('answer_received', ({ rank }) => {
-    document.getElementById('myRankWait').innerText = `#${rank}`;
+socket.on('answer_received', () => {
+    // Answer confirmed — no rank shown here (Host will reveal on podium)
 });
 
 socket.on('answer_error', (msg) => showAlert(msg));
