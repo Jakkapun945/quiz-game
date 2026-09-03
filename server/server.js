@@ -574,13 +574,21 @@ function showResults(session) {
     io.to(session.hostSocketId).emit('show_results', resultsPayload);
 
     // Send to all Players (congratulations for top 3 + their own result)
+    // IMPORTANT: Do NOT send nicknames in top3 to players — nicknames are revealed
+    // one by one via the 'podium_revealed' event when the Host clicks each position.
+    const top3Hidden = top3.map(p => ({
+        rank: p.rank,
+        responseTimeMs: p.responseTimeMs
+        // nickname is intentionally omitted to prevent early reveal
+    }));
+
     session.players.forEach((player) => {
         if (player.isConnected) {
             const myResp = session.responses.get(player.id);
             const myRank = session.responseOrder.indexOf(player.id);
 
             io.to(player.socketId).emit('show_results_player', {
-                top3,
+                top3: top3Hidden,
                 statsPercent,
                 mySelectedOption: myResp ? myResp.selectedOption : null,
                 myResponseTimeMs: myResp ? myResp.responseTimeMs : null,

@@ -140,8 +140,7 @@ socket.on('show_results_player', (data) => {
     document.getElementById('playerLobby').style.display = 'none';
     document.getElementById('playerResultScreen').style.display = 'block';
 
-    // Store data for reveal
-    window._playerResultData = data;
+    // Don't store raw data on window to prevent console snooping
 
     // Render Podium with hidden names
     const podium = document.getElementById('playerPodium');
